@@ -5,24 +5,24 @@ import http from "./services/httpService";
 import convert from "xml-js";
 
 const style = {
-	height: "100vh", //500 // we can control scene size by setting container dimensions
+	height: "100vh", // we can control scene size by setting container dimensions
 	overflow: "hidden"
 };
 
 const colors = {
-	InteriorWall: 0x9b4f0f,
-	ExteriorWall: 0x8d230f,
-	Roof: 0x1e434c,
-	InteriorFloor: 0x4b7447,
+	InteriorWall: 0xff0000, //0x9b4f0f,
+	ExteriorWall: 0x0000ff, //0x8d230f,
+	Roof: 0x00ff00, //0x1e434c,
+	InteriorFloor: 0xffff00, //0x4b7447,
 	//ExposedFloor: 0x40b4ff,
-	Shade: 0xc99e10,
+	Shade: 0xff00ff, //0xc99e10,
 	//UndergroundWall: 0xa55200,
 	//UndergroundSlab: 0x804000,
 	//Ceiling: 0xff8080,
 	//Air: 0xffff00,
 	//UndergroundCeiling: 0x408080,
 	//RaisedFloor: 0x4b417d,
-	SlabOnGrade: 0x8eba43
+	SlabOnGrade: 0x555555 //0x8eba43
 	//FreestandingColumn: 0x808080,
 	//EmbeddedColumn: 0x80806e
 };
@@ -30,7 +30,6 @@ const colors = {
 class App extends Component {
 	componentDidMount() {
 		this.sceneSetup();
-		//this.addCustomSceneObjects();
 		this.startAnimationLoop();
 		window.addEventListener("resize", this.handleWindowResize);
 		window.addEventListener(
@@ -58,72 +57,44 @@ class App extends Component {
 
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
-			60, // fov = field of view
+			100, // fov = field of view
 			width / height, // aspect ratio
 			1, // near plane
 			10000 // far plane
 		);
 		this.camera.up.set(0, 0, 1);
-		//this.camera.position.z = 5; // is used here to set some distance from a cube that is located at z = 0
 
 		// OrbitControls allow a camera to orbit around the object
 		// https://threejs.org/docs/#examples/controls/OrbitControls
 		this.controls = new OrbitControls(this.camera, this.el);
 		this.renderer = new THREE.WebGLRenderer({
-			alpha: 1,
+			alpha: true,
 			antialias: true
 		});
 		this.renderer.setSize(width, height);
-		this.el.appendChild(this.renderer.domElement); // mount using React ref
+		this.el.appendChild(this.renderer.domElement);
 
 		// Create Global Ambient Light, Light Direction and Light Point
-		this.lightAmbient = new THREE.AmbientLight(0x444444);
+		this.lightAmbient = new THREE.AmbientLight(0x999999);
 		this.scene.add(this.lightAmbient);
 
 		this.lightDirectional = new THREE.DirectionalLight(0xffffff, 1);
+		this.lightDirectional.position.set(1, 0, 1);
 		this.lightDirectional.shadow.mapSize.width = 2048; // default 512
 		this.lightDirectional.shadow.mapSize.height = 2048;
 		this.lightDirectional.castShadow = true;
 		this.scene.add(this.lightDirectional);
 
-		// this.lightPoint = new THREE.PointLight(0xffffff, 0.5);
+		this.lightPoint = new THREE.PointLight(0xffffff, 0.5);
 		// this.lightPoint.position = new THREE.Vector3(0, 0, 1);
-		// this.camera.add(this.lightPoint);
+		this.camera.add(this.lightPoint);
 		this.scene.add(this.camera);
 
-		this.axesHelper = new THREE.AxesHelper(50);
+		this.axesHelper = new THREE.AxesHelper(200);
 		this.scene.add(this.axesHelper);
 
 		this.readXMLFile();
 	};
-
-	// Here should come custom code.
-	// Code below is taken from Three.js BoxGeometry example
-	// https://threejs.org/docs/#api/en/geometries/BoxGeometry
-	// addCustomSceneObjects = () => {
-	// 	const geometry = new THREE.BoxGeometry(2, 2, 2);
-	// 	const material = new THREE.MeshPhongMaterial({
-	// 		color: 0x156289,
-	// 		emissive: 0x072534,
-	// 		side: THREE.DoubleSide,
-	// 		flatShading: true
-	// 	});
-	// 	this.cube = new THREE.Mesh(geometry, material);
-	// 	this.scene.add(this.cube);
-
-	// 	const lights = [];
-	// 	lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-	// 	lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-	// 	lights[2] = new THREE.PointLight(0xffffff, 1, 0);
-
-	// 	lights[0].position.set(0, 200, 0);
-	// 	lights[1].position.set(100, 200, 100);
-	// 	lights[2].position.set(-100, -200, -100);
-
-	// 	this.scene.add(lights[0]);
-	// 	this.scene.add(lights[1]);
-	// 	this.scene.add(lights[2]);
-	// };
 
 	startAnimationLoop = () => {
 		this.renderer.render(this.scene, this.camera);
@@ -159,13 +130,7 @@ class App extends Component {
 		let polyloops = [];
 		let openings = [];
 
-		var selectedPart = "InteriorWall";
-		var selectedColor = colors.Roof;
-
 		for (let surface of surfaces) {
-			console.log("surface", surface);
-			//if (surface.surfaceType === selectedPart) {
-			console.log(surface._attributes.surfaceType);
 			if (surface.Opening) {
 				if (surface.Opening.PlanarGeometry) {
 					const polyloop = surface.Opening.PlanarGeometry.PolyLoop;
@@ -190,26 +155,19 @@ class App extends Component {
 			const points = this.getPoints(polyloop);
 			polyloops.push(points);
 		}
+
 		this.scene.remove(this.campusSurfaces);
 
 		// Create Object 3D
 		this.campusSurfaces = new THREE.Object3D();
 
 		for (let i = 0; i < polyloops.length; i++) {
-			let material = new THREE.MeshBasicMaterial({
+			let material = new THREE.MeshPhongMaterial({
 				color: colors[surfaces[i]._attributes.surfaceType],
-				side: 2,
-				opacity: 1,
-				transparent: true
+				emissive: 0x000000,
+				side: THREE.DoubleSide,
+				flatShading: true
 			});
-			// if (surfaces[i].surfaceType !== selectedPart) {
-			// 	material = new THREE.MeshBasicMaterial({
-			// 		color: "#555", //colors[surfaces[i].surfaceType],
-			// 		side: 2,
-			// 		opacity: 0.2,
-			// 		transparent: true
-			// 	});
-			// }
 
 			const shape = this.drawShapeSinglePassObjects(
 				polyloops[i],
@@ -230,7 +188,7 @@ class App extends Component {
 
 		for (let CartesianPoint of polyloop.CartesianPoint) {
 			const CartesianPointCoordinateArray = CartesianPoint.Coordinate.map(
-				obj => obj._text
+				obj => parseFloat(obj._text)
 			);
 			const point = new THREE.Vector3().fromArray(
 				CartesianPointCoordinateArray
@@ -241,30 +199,44 @@ class App extends Component {
 	};
 
 	drawShapeSinglePassObjects = (vertices, material, holes) => {
+		// Make a shape from vertices
+		// Because shape is 2D object, we can only define shapes only in x-y plane
+		// So to define a shape in e.g. x-z plane we need to do some calculations to map it in x-y plane
+
+		// Because surface is planar, so make a plane from three points of surface
 		const plane = new THREE.Plane().setFromCoplanarPoints(
 			vertices[0],
 			vertices[1],
 			vertices[2]
 		);
 
+		// make an object and rotates the object to face a point in world space. Point is normal vector of plane (surface)
+		// obj is parallel to surface, so, normal of obj and plane should be the same
 		const obj = new THREE.Object3D();
 		obj.lookAt(plane.normal);
 
-		const obj2 = new THREE.Object3D();
-		obj2.quaternion.copy(obj.clone().quaternion.conjugate());
-		obj2.updateMatrixWorld(true);
+		// make another object and rotates the object to conjugate quaternion of plane (surface)
+		const objQuaternionConjugate = new THREE.Object3D();
+		objQuaternionConjugate.quaternion.copy(
+			obj.clone().quaternion.conjugate()
+		);
+		objQuaternionConjugate.updateMatrixWorld(true);
 
+		// Converts the vector from local space to world space.
+		// Rotate each point of surface
+		// f(p) = q.p.q^-1
+		// https://eater.net/quaternions/video/intro
 		for (let vertex of vertices) {
-			obj2.localToWorld(vertex);
+			objQuaternionConjugate.localToWorld(vertex);
 		}
+		// Now vertices are in x-y plane and we can use shape to draw it
 
 		const shape = new THREE.Shape(vertices);
-
 		shape.autoClose = true;
 
 		for (let verticesHoles of holes) {
 			for (let vertex of verticesHoles) {
-				obj2.localToWorld(vertex);
+				objQuaternionConjugate.localToWorld(vertex);
 			}
 
 			const hole = new THREE.Path();
@@ -275,38 +247,27 @@ class App extends Component {
 		const geometryShape = new THREE.ShapeGeometry(shape);
 
 		let shapeMesh = new THREE.Mesh(geometryShape, material);
+		// back to original direction
 		shapeMesh.quaternion.copy(obj.quaternion);
+		// if don't do that all surfaces are on each other
 		shapeMesh.position.copy(plane.normal.multiplyScalar(-plane.constant));
 
 		return shapeMesh;
 	};
 
 	zoomObjectBoundingSphere = obj => {
-		let center;
-		let radius;
-		if (obj.geometry) {
-			console.log(1);
-			// might not be necessary
+		// Define boundingBox
+		const boundingBox = new THREE.Box3().setFromObject(obj);
+		const sphere = new THREE.Sphere();
+		boundingBox.getBoundingSphere(sphere);
+		const center = sphere.center;
+		const radius = sphere.radius;
 
-			obj.geometry.computeBoundingSphere();
-			center = obj.geometry.boundingSphere.center;
-			radius = obj.geometry.boundingSphere.radius;
-		} else {
-			console.log("this.campusSurfaces", this.campusSurfaces);
-			const bbox = new THREE.Box3().setFromObject(this.campusSurfaces);
-			console.log("bbox", bbox);
-			let sphere = new THREE.Sphere();
-			bbox.getBoundingSphere(sphere);
-			center = sphere.center;
-			radius = sphere.radius;
-		}
-
-		obj.userData.center = center;
-		obj.userData.radius = radius;
-
+		// Modify controls if want to control rotation on the object not on axes
 		this.controls.target.copy(center);
 		this.controls.maxDistance = 5 * radius;
 
+		// Modify camera to look at object
 		this.camera.position.copy(
 			center
 				.clone()
@@ -314,26 +275,28 @@ class App extends Component {
 					new THREE.Vector3(1.0 * radius, -1.0 * radius, 1.0 * radius)
 				)
 		);
-		this.axesHelper.position.copy(center);
-
 		this.camera.far = 10 * radius;
 		this.camera.updateProjectionMatrix();
 
-		this.lightDirectional.position.copy(
-			center
-				.clone()
-				.add(
-					new THREE.Vector3(1.5 * radius, 1.5 * radius, 1.5 * radius)
-				)
-		);
+		// Modify axesHelper if want to position origin of axesHelper in center of the object
+		//this.axesHelper.position.copy(center);
 
-		this.lightDirectional.shadow.camera.scale.set(
-			0.2 * radius,
-			0.2 * radius,
-			0.01 * radius
-		);
+		// Modify lightDirectional position
+		// this.lightDirectional.position.copy(
+		// 	center
+		// 		.clone()
+		// 		.add(
+		// 			new THREE.Vector3(1.5 * radius, 1.5 * radius, 1.5 * radius)
+		// 		)
+		// );
 
-		this.lightDirectional.target = this.axesHelper;
+		// this.lightDirectional.shadow.camera.scale.set(
+		// 	0.2 * radius,
+		// 	0.2 * radius,
+		// 	0.01 * radius
+		// );
+
+		// this.lightDirectional.target = this.axesHelper;
 	};
 
 	render() {
